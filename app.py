@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 import pandas as pd
+from fastapi.middleware.cors import CORSMiddleware
 
 # ===============================
 # LOAD MODEL
@@ -17,6 +18,14 @@ app = FastAPI(
     title="Predictive Maintenance API",
     description="Multi-class failure prediction using AI4I 2020 dataset",
     version="1.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ===============================

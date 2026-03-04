@@ -3,7 +3,7 @@ import Header from "./components/Header"
 import Banner from "./components/Banner"
 import Home from "./pages/Home"
 import Tools from "./pages/Tools"
-import Docs from "./pages/Docs"
+import Documentation from "./pages/Documentation"
 
 function App() {
   return (
@@ -16,7 +16,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/tools" element={<Tools />} />
-            <Route path="/docs" element={<Docs />} />
+            <Route path="/docs" element={<Documentation />} />
           </Routes>
         </main>
       </div>
