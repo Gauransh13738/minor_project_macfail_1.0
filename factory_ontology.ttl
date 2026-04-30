@@ -1,0 +1,86 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix mf:   <http://macfail.org/ontology#> .
+
+# ── Classes ──────────────────────────────────────────────
+mf:Machine       a owl:Class .
+mf:Sensor        a owl:Class .
+mf:FailureMode   a owl:Class .
+mf:RootCause     a owl:Class .
+
+# ── Properties ───────────────────────────────────────────
+mf:has_sensor      a owl:ObjectProperty ; rdfs:domain mf:Machine    ; rdfs:range mf:Sensor .
+mf:has_failure     a owl:ObjectProperty ; rdfs:domain mf:Machine    ; rdfs:range mf:FailureMode .
+mf:caused_by       a owl:ObjectProperty ; rdfs:domain mf:FailureMode; rdfs:range mf:RootCause .
+mf:measured_by     a owl:ObjectProperty ; rdfs:domain mf:RootCause  ; rdfs:range mf:Sensor .
+mf:action          a owl:DatatypeProperty; rdfs:domain mf:RootCause .
+mf:description     a owl:DatatypeProperty .
+
+# ── Machine instance ─────────────────────────────────────
+mf:CNCMachine_1  a mf:Machine ;
+    mf:has_sensor mf:AirTempSensor, mf:ProcessTempSensor,
+                  mf:RotSpeedSensor, mf:TorqueSensor, mf:ToolWearSensor .
+
+# ── Sensors ──────────────────────────────────────────────
+mf:AirTempSensor     a mf:Sensor ; mf:description "Air temperature in Kelvin" .
+mf:ProcessTempSensor a mf:Sensor ; mf:description "Process temperature in Kelvin" .
+mf:RotSpeedSensor    a mf:Sensor ; mf:description "Rotational speed in RPM" .
+mf:TorqueSensor      a mf:Sensor ; mf:description "Torque in Nm" .
+mf:ToolWearSensor    a mf:Sensor ; mf:description "Tool wear in minutes" .
+
+# ── Failure Modes & Root Causes ──────────────────────────
+
+mf:ToolWearFailure a mf:FailureMode ;
+    mf:description "Tool wear failure" ;
+    mf:caused_by mf:ExcessiveToolAge, mf:HighTorqueOnWornTool .
+
+mf:ExcessiveToolAge a mf:RootCause ;
+    mf:description "Tool has exceeded its operational lifespan" ;
+    mf:measured_by mf:ToolWearSensor ;
+    mf:action "Replace cutting tool immediately. Implement scheduled replacement at 200 min intervals." .
+
+mf:HighTorqueOnWornTool a mf:RootCause ;
+    mf:description "High torque applied to a worn tool accelerates failure" ;
+    mf:measured_by mf:TorqueSensor, mf:ToolWearSensor ;
+    mf:action "Reduce feed rate. Inspect and replace tool." .
+
+mf:HeatDissipationFailure a mf:FailureMode ;
+    mf:description "Heat dissipation failure" ;
+    mf:caused_by mf:InsufficientCooling, mf:HighAmbientTemperature .
+
+mf:InsufficientCooling a mf:RootCause ;
+    mf:description "Temperature delta between air and process is too low (< 8.6K)" ;
+    mf:measured_by mf:AirTempSensor, mf:ProcessTempSensor ;
+    mf:action "Check coolant flow. Clean heat exchangers. Verify cooling system is operational." .
+
+mf:HighAmbientTemperature a mf:RootCause ;
+    mf:description "Ambient air temperature is above safe operating range" ;
+    mf:measured_by mf:AirTempSensor ;
+    mf:action "Improve shop floor ventilation. Check HVAC system." .
+
+mf:PowerFailure a mf:FailureMode ;
+    mf:description "Power failure" ;
+    mf:caused_by mf:TorqueSpeedImbalance .
+
+mf:TorqueSpeedImbalance a mf:RootCause ;
+    mf:description "Product of torque and rotational speed exceeds power limits" ;
+    mf:measured_by mf:TorqueSensor, mf:RotSpeedSensor ;
+    mf:action "Reduce operational load. Check motor and drive system. Verify power supply stability." .
+
+mf:OverstrainFailure a mf:FailureMode ;
+    mf:description "Overstrain failure" ;
+    mf:caused_by mf:ExcessiveMechanicalLoad .
+
+mf:ExcessiveMechanicalLoad a mf:RootCause ;
+    mf:description "Tool wear combined with high torque exceeds mechanical strain threshold" ;
+    mf:measured_by mf:TorqueSensor, mf:ToolWearSensor ;
+    mf:action "Immediately reduce feed rate and cutting depth. Replace worn tooling." .
+
+mf:RandomFailure a mf:FailureMode ;
+    mf:description "Random/stochastic failure" ;
+    mf:caused_by mf:UnpredictableWear .
+
+mf:UnpredictableWear a mf:RootCause ;
+    mf:description "Failure not correlated with any specific sensor pattern" ;
+    mf:action "Perform full machine inspection. Review maintenance logs for anomalies." .
