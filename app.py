@@ -1,94 +1,3 @@
-# from fastapi import FastAPI
-# from pydantic import BaseModel
-# import joblib
-# import pandas as pd
-# from fastapi.middleware.cors import CORSMiddleware
-# from ontology_reasoner import get_root_causes
-
-# # ===============================
-# # LOAD MODEL
-# # ===============================
-
-# model = joblib.load("model.pkl")
-
-# # ===============================
-# # FASTAPI APP
-# # ===============================
-
-# app = FastAPI(
-#     title="Predictive Maintenance API",
-#     description="Multi-class failure prediction using AI4I 2020 dataset",
-#     version="1.0"
-# )
-
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["http://localhost:5173"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
-# # ===============================
-# # INPUT SCHEMA
-# # ===============================
-
-# class MachineInput(BaseModel):
-#     Type: str
-#     Air_temperature_K: float
-#     Process_temperature_K: float
-#     Rotational_speed_rpm: float
-#     Torque_Nm: float
-#     Tool_wear_min: float
-
-# # ===============================
-# # FAILURE LABEL MAPPING
-# # ===============================
-
-# failure_map = {
-#     0: "No Failure",
-#     1: "Tool Wear Failure",
-#     2: "Heat Dissipation Failure",
-#     3: "Power Failure",
-#     4: "Overstrain Failure",
-#     5: "Random Failure"
-# }
-
-# # ===============================
-# # HEALTH CHECK
-# # ===============================
-
-# @app.get("/")
-# def home():
-#     return {"message": "Predictive Maintenance API is running"}
-
-# # ===============================
-# # PREDICTION ENDPOINT
-# # ===============================
-
-# @app.post("/predict")
-# def predict_failure(data: MachineInput):
-#     input_df = pd.DataFrame([{
-#         "Type": data.Type,
-#         "Air temperature [K]": data.Air_temperature_K,
-#         "Process temperature [K]": data.Process_temperature_K,
-#         "Rotational speed [rpm]": data.Rotational_speed_rpm,
-#         "Torque [Nm]": data.Torque_Nm,
-#         "Tool wear [min]": data.Tool_wear_min
-#     }])
-
-#     prediction = model.predict(input_df)[0]
-#     failure_type = failure_map[prediction]
-
-#     # ── NEW: Ontology reasoning ──────────────────────────
-#     root_causes = get_root_causes(failure_type)
-
-#     return {
-#         "failure_class": int(prediction),
-#         "failure_type":  failure_type,
-#         "root_cause_analysis": root_causes   # NEW field
-#     }
-
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
@@ -179,7 +88,6 @@ def predict_ml_only(data: MachineInput):
 # ===============================
 @app.post("/predict")
 def predict_with_ontology(data: MachineInput):
-    """ML prediction assisted by ontology reasoning when confidence is low."""
     input_df = pd.DataFrame([{
         "Type": data.Type,
         "Air temperature [K]": data.Air_temperature_K,
@@ -190,32 +98,37 @@ def predict_with_ontology(data: MachineInput):
     }])
 
     proba      = model.predict_proba(input_df)[0]
-    prediction = int(proba.argmax())
-    confidence = round(float(proba[prediction]), 4)
+    ml_pred    = int(proba.argmax())
+    confidence = round(float(proba[ml_pred]), 4)
 
+    # Always run ontology
+    ontology_vote     = ontology_classifier(data)
     ontology_assisted = False
-    ontology_vote     = None
+    final_pred        = ml_pred
 
-    # If ML is uncertain, consult ontology
-    if confidence < 0.60:
-        ontology_vote = ontology_classifier(data)
-        if ontology_vote != 0:
-            prediction        = ontology_vote
+    # Strategy: if ontology fires AND ML prediction is No Failure
+    # OR ontology fires AND ML confidence < 0.75 → trust ontology
+    if ontology_vote != 0:
+        if ml_pred == 0 and confidence < 0.70:
+            # Only override when ML is genuinely uncertain
+            final_pred        = ontology_vote
             ontology_assisted = True
+        elif confidence < 0.75 and ontology_vote == ml_pred:
+            # Both agree, ML uncertain — just flag assisted
+            ontology_assisted = True
+            final_pred        = ml_pred
 
-    failure_type = failure_map[prediction]
+    failure_type = failure_map[final_pred]
     root_causes  = get_root_causes(failure_type)
 
-    # In the /predict endpoint, update the return:
     return {
-        "failure_class":       prediction,
-        "failure_type":        failure_type,
-        "confidence":          confidence,
-        "ontology_assisted":   ontology_assisted,
-        "ontology_confidence": 0.92 if ontology_assisted else confidence,
-        "ontology_vote":       failure_map.get(ontology_vote, "None") if ontology_vote is not None else "None",
+        "failure_class":      final_pred,
+        "failure_type":       failure_type,
+        "confidence":         confidence,
+        "ontology_assisted":  ontology_assisted,
+        "ontology_vote":      failure_map.get(ontology_vote, "None"),
         "root_cause_analysis": root_causes,
-        "method":              "ML + Ontology" if ontology_assisted else "ML (high confidence)"
+        "method": "ML + Ontology" if ontology_assisted else "ML (high confidence)"
     }
     
 @app.post("/debug/proba")
