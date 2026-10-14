@@ -1,3 +1,55 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-gray-950 text-gray-100 antialiased;
+    font-stretch: 100%;
+  }
+
+  /* One visible focus style for every interactive element. */
+  :focus-visible {
+    outline: 2px solid theme("colors.rule");
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: theme("colors.rule / 35%");
+  }
+}
+
+@layer components {
+  /* Headlines use Archivo's width axis: wider and heavier than body text. */
+  .display {
+    font-stretch: 118%;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.05;
+  }
+
+  /* Hatched fill that marks the zone where a rule fires. The tone comes from `color`. */
+  .hatch {
+    background-image: repeating-linear-gradient(
+      135deg,
+      currentColor 0,
+      currentColor 1px,
+      transparent 1px,
+      transparent 5px
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

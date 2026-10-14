@@ -2,12 +2,18 @@
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix mf:   <http://macfail.org/ontology#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
 
 # ── Classes ──────────────────────────────────────────────
 mf:Machine       a owl:Class .
 mf:Sensor        a owl:Class .
 mf:FailureMode   a owl:Class .
 mf:RootCause     a owl:Class .
+
+# ── Alignment with the W3C SOSA/SSN vocabulary ───────────────────────
+mf:Machine    rdfs:subClassOf sosa:Platform .
+mf:Sensor     rdfs:subClassOf sosa:Sensor .
+mf:has_sensor rdfs:subPropertyOf sosa:hosts .
 
 # ── Properties ───────────────────────────────────────────
 mf:has_sensor      a owl:ObjectProperty ; rdfs:domain mf:Machine    ; rdfs:range mf:Sensor .
@@ -64,7 +70,7 @@ mf:PowerFailure a mf:FailureMode ;
     mf:caused_by mf:TorqueSpeedImbalance .
 
 mf:TorqueSpeedImbalance a mf:RootCause ;
-    mf:description "Product of torque and rotational speed exceeds power limits" ;
+    mf:description "Mechanical power (torque x rotational speed) is outside the safe 3.5-9 kW band" ;
     mf:measured_by mf:TorqueSensor, mf:RotSpeedSensor ;
     mf:action "Reduce operational load. Check motor and drive system. Verify power supply stability." .
 
@@ -73,7 +79,7 @@ mf:OverstrainFailure a mf:FailureMode ;
     mf:caused_by mf:ExcessiveMechanicalLoad .
 
 mf:ExcessiveMechanicalLoad a mf:RootCause ;
-    mf:description "Tool wear combined with high torque exceeds mechanical strain threshold" ;
+    mf:description "Tool wear x torque exceeds the strain limit for the product type (11000 / 12000 / 13000 min.Nm for L / M / H)" ;
     mf:measured_by mf:TorqueSensor, mf:ToolWearSensor ;
     mf:action "Immediately reduce feed rate and cutting depth. Replace worn tooling." .
 
@@ -84,3 +90,86 @@ mf:RandomFailure a mf:FailureMode ;
 mf:UnpredictableWear a mf:RootCause ;
     mf:description "Failure not correlated with any specific sensor pattern" ;
     mf:action "Perform full machine inspection. Review maintenance logs for anomalies." .
+
+
+# ═════════════════════════════════════════════════════════════════════
+#  Executable diagnostic rules (read by ontology_reasoner.py)
+#  Thresholds live here, not in Python: edit this file to change the rules.
+#
+#  Derived features computed by the reasoner from the five sensor readings:
+#    temp_delta  = process_temp - air_temp                [K]
+#    power_W     = torque * rpm * 2*pi / 60               [W]
+#    wear_torque = tool_wear * torque                     [min.Nm]
+#  A Rule fires when ALL of its Conditions hold (and its type matches, if given).
+# ═════════════════════════════════════════════════════════════════════
+
+mf:Rule       a owl:Class ; rdfs:comment "Sufficient condition over sensor readings that indicates a failure mode." .
+mf:Condition  a owl:Class .
+
+mf:indicates      a owl:ObjectProperty   ; rdfs:domain mf:Rule ; rdfs:range mf:FailureMode .
+mf:hasCondition   a owl:ObjectProperty   ; rdfs:domain mf:Rule ; rdfs:range mf:Condition .
+mf:feature        a owl:DatatypeProperty ; rdfs:domain mf:Condition .
+mf:operator       a owl:DatatypeProperty ; rdfs:domain mf:Condition .
+mf:threshold      a owl:DatatypeProperty ; rdfs:domain mf:Condition .
+mf:appliesToType  a owl:DatatypeProperty ; rdfs:domain mf:Rule .
+mf:priority       a owl:DatatypeProperty ; rdfs:domain mf:FailureMode ;
+    rdfs:comment "Lower number wins when several rules fire at once." .
+mf:ruleCoverage   a owl:DatatypeProperty ; rdfs:domain mf:FailureMode ;
+    rdfs:comment "'complete' = the rules are necessary as well as sufficient, so an ML vote for this mode with no rule firing is rejected." .
+mf:predictable    a owl:DatatypeProperty ; rdfs:domain mf:FailureMode ;
+    rdfs:comment "false = the mode is stochastic and cannot be inferred from sensor patterns." .
+
+# ── Failure-mode metadata ────────────────────────────────────────────
+mf:HeatDissipationFailure  mf:priority 1 ; mf:ruleCoverage "complete" .
+mf:PowerFailure            mf:priority 2 ; mf:ruleCoverage "complete" .
+mf:OverstrainFailure       mf:priority 3 ; mf:ruleCoverage "complete" .
+mf:RandomFailure           mf:predictable false .
+
+# ── Heat dissipation: small temperature gap at low speed ─────────────
+mf:Rule_HDF a mf:Rule ;
+    mf:indicates mf:HeatDissipationFailure ;
+    mf:description "Process-air temperature gap below 8.6 K while rotating below 1380 rpm" ;
+    mf:hasCondition [ a mf:Condition ; mf:feature "temp_delta" ; mf:operator "<" ; mf:threshold 8.6 ] ,
+                    [ a mf:Condition ; mf:feature "rpm"        ; mf:operator "<" ; mf:threshold 1380 ] .
+
+# ── Power: mechanical power outside the 3.5-9 kW operating band ──────
+mf:Rule_PWF_Low a mf:Rule ;
+    mf:indicates mf:PowerFailure ;
+    mf:description "Mechanical power below 3500 W" ;
+    mf:hasCondition [ a mf:Condition ; mf:feature "power_W" ; mf:operator "<" ; mf:threshold 3500 ] .
+
+mf:Rule_PWF_High a mf:Rule ;
+    mf:indicates mf:PowerFailure ;
+    mf:description "Mechanical power above 9000 W" ;
+    mf:hasCondition [ a mf:Condition ; mf:feature "power_W" ; mf:operator ">" ; mf:threshold 9000 ] .
+
+# ── Overstrain: wear x torque above a product-type limit ─────────────
+mf:Rule_OSF_L a mf:Rule ;
+    mf:indicates mf:OverstrainFailure ;
+    mf:appliesToType "L" ;
+    mf:description "Tool wear x torque above 11000 min.Nm (type L)" ;
+    mf:hasCondition [ a mf:Condition ; mf:feature "wear_torque" ; mf:operator ">" ; mf:threshold 11000 ] .
+
+mf:Rule_OSF_M a mf:Rule ;
+    mf:indicates mf:OverstrainFailure ;
+    mf:appliesToType "M" ;
+    mf:description "Tool wear x torque above 12000 min.Nm (type M)" ;
+    mf:hasCondition [ a mf:Condition ; mf:feature "wear_torque" ; mf:operator ">" ; mf:threshold 12000 ] .
+
+mf:Rule_OSF_H a mf:Rule ;
+    mf:indicates mf:OverstrainFailure ;
+    mf:appliesToType "H" ;
+    mf:description "Tool wear x torque above 13000 min.Nm (type H)" ;
+    mf:hasCondition [ a mf:Condition ; mf:feature "wear_torque" ; mf:operator ">" ; mf:threshold 13000 ] .
+
+# ── Which root cause each rule is evidence for ───────────────────────
+# A fired rule confirms the root cause it explains. Root causes of the diagnosed
+# failure mode that no fired rule explains are reported only as possible causes.
+mf:explains a owl:ObjectProperty ; rdfs:domain mf:Rule ; rdfs:range mf:RootCause .
+
+mf:Rule_HDF      mf:explains mf:InsufficientCooling .
+mf:Rule_PWF_Low  mf:explains mf:TorqueSpeedImbalance .
+mf:Rule_PWF_High mf:explains mf:TorqueSpeedImbalance .
+mf:Rule_OSF_L    mf:explains mf:ExcessiveMechanicalLoad .
+mf:Rule_OSF_M    mf:explains mf:ExcessiveMechanicalLoad .
+mf:Rule_OSF_H    mf:explains mf:ExcessiveMechanicalLoad .

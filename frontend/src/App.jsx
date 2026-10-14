@@ -1,34 +1,5 @@
-// import { BrowserRouter, Routes, Route } from "react-router-dom"
-// import Header from "./components/Header"
-// import Banner from "./components/Banner"
-// import Home from "./pages/Home"
-// import Tools from "./pages/Tools"
-// import Documentation from "./pages/Documentation"
-
-// function App() {
-//   return (
-//     <BrowserRouter>
-//       <div className="min-h-screen bg-gray-950 text-white">
-//         <Header />
-//         <Banner />
-
-//         <main className="max-w-7xl mx-auto p-8">
-//           <Routes>
-//             <Route path="/" element={<Home />} />
-//             <Route path="/tools" element={<Tools />} />
-//             <Route path="/docs" element={<Documentation />} />
-//           </Routes>
-//         </main>
-//       </div>
-//     </BrowserRouter>
-//   )
-// }
-
-// export default App
-
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Header from "./components/Header"
-import Banner from "./components/Banner"
 import Home from "./pages/Home"
 import Tools from "./pages/Tools"
 import Documentation from "./pages/Documentation"
@@ -37,10 +8,9 @@ import SensorDashboard from "./pages/SensorDashboard"
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-950 text-white">
+      <div className="min-h-screen bg-gray-950 text-gray-100">
         <Header />
-        <Banner />
-        <main className="max-w-7xl mx-auto p-8">
+        <main>
           <Routes>
             <Route path="/"          element={<Home />} />
             <Route path="/tools"     element={<Tools />} />

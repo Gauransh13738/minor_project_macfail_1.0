@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Industra AI">
+  <rect width="32" height="32" rx="7" fill="#0A1624"/>
+  <path d="M6 22h20" stroke="#284664" stroke-width="2" stroke-linecap="round"/>
+  <path d="M6 22h11" stroke="#5BD1F5" stroke-width="2" stroke-linecap="round"/>
+  <path d="M20 9v14" stroke="#F6B73C" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="17" cy="22" r="3" fill="#E8EEF4"/>
+</svg>

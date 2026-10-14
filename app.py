@@ -3,12 +3,24 @@ from pydantic import BaseModel
 import joblib
 import pandas as pd
 from fastapi.middleware.cors import CORSMiddleware
-from ontology_reasoner import get_root_causes, ontology_classifier
+import os
+from ontology_reasoner import (
+    get_root_causes, derive_features, hybrid_decision, empirical_rule_precision,
+    evaluate_rules,
+)
 
 # ===============================
 # LOAD MODEL
 # ===============================
 model = joblib.load("model.pkl")
+
+# Empirical precision of each ontology rule family on AI4I (used as the reported
+# confidence when a rule decides, so the number is measured, not invented).
+try:
+    RULE_PRECISION = empirical_rule_precision(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "ai4i2020.csv"))
+except Exception:
+    RULE_PRECISION = {}
 
 # ===============================
 # FASTAPI APP
@@ -98,37 +110,59 @@ def predict_with_ontology(data: MachineInput):
     }])
 
     proba      = model.predict_proba(input_df)[0]
-    ml_pred    = int(proba.argmax())
-    confidence = round(float(proba[ml_pred]), 4)
+    ml_pred       = int(proba.argmax())
+    ml_confidence = round(float(proba[ml_pred]), 4)
 
-    # Always run ontology
-    ontology_vote     = ontology_classifier(data)
-    ontology_assisted = False
-    final_pred        = ml_pred
+    # Ontology-constrained decision (rules live in factory_ontology.ttl):
+    #  - a fired rule decides the failure mode
+    #  - otherwise ML's pick is rejected if the ontology rules it out
+    features = derive_features(
+        data.Tool_wear_min, data.Torque_Nm, data.Air_temperature_K,
+        data.Process_temperature_K, data.Rotational_speed_rpm)
+    decision   = hybrid_decision(proba, features, data.Type)
+    final_pred = decision["final_class"]
+    source     = decision["source"]
+    assisted   = source != "ml"
 
-    # Strategy: if ontology fires AND ML prediction is No Failure
-    # OR ontology fires AND ML confidence < 0.75 → trust ontology
-    if ontology_vote != 0:
-        if ml_pred == 0 and confidence < 0.70:
-            # Only override when ML is genuinely uncertain
-            final_pred        = ontology_vote
-            ontology_assisted = True
-        elif confidence < 0.75 and ontology_vote == ml_pred:
-            # Both agree, ML uncertain — just flag assisted
-            ontology_assisted = True
-            final_pred        = ml_pred
+    # Reported confidence: measured rule precision when a rule decides,
+    # otherwise the ML probability of the class that was chosen.
+    if source == "ontology_rule" and RULE_PRECISION.get(final_pred) is not None:
+        confidence = round(float(RULE_PRECISION[final_pred]), 4)
+    else:
+        confidence = round(float(proba[final_pred]), 4)
 
     failure_type = failure_map[final_pred]
-    root_causes  = get_root_causes(failure_type)
+    # Root causes tied to a fired rule are evidence-backed; otherwise they are only candidates.
+    root_causes  = get_root_causes(failure_type, decision["fired_rules"])
+
+    methods = {
+        "ontology_rule": "Ontology rule",
+        "ontology_veto": "ML + Ontology veto",
+        "ml":            "ML (ontology consistent)",
+    }
 
     return {
-        "failure_class":      final_pred,
-        "failure_type":       failure_type,
-        "confidence":         confidence,
-        "ontology_assisted":  ontology_assisted,
-        "ontology_vote":      failure_map.get(ontology_vote, "None"),
+        "failure_class":       final_pred,
+        "failure_type":        failure_type,
+        "confidence":          confidence,
+        "ontology_assisted":   assisted,
+        "decision_source":     source,
+        "ml_prediction":       failure_map[ml_pred],
+        "ml_confidence":       ml_confidence,
+        "confidence_basis":    ("rule_precision"
+                                if source == "ontology_rule" and RULE_PRECISION.get(final_pred) is not None
+                                else "ml_probability"),
+        "rules_fired":         [{"id": r["id"], "failure_type": r["failure_type"],
+                                 "description": r["description"]}
+                                for r in decision["fired_rules"]],
+        "rule_checks":         evaluate_rules(features, data.Type),
+        "features":            {k: round(v, 2) for k, v in features.items()},
+        "vetoed":              [failure_map[c] for c in decision["vetoed"]],
         "root_cause_analysis": root_causes,
-        "method": "ML + Ontology" if ontology_assisted else "ML (high confidence)"
+        "root_cause_basis":    ("rule_evidence"
+                                if any(c["evidence"] == "rule" for c in root_causes)
+                                else "candidates"),
+        "method":              methods[source],
     }
     
 @app.post("/debug/proba")

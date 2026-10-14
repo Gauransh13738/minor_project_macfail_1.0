@@ -219,7 +219,7 @@ export default function SensorDashboard() {
   const resultColor  = result ? (FAILURE_COLORS[result.failure_type] || "text-gray-400") : "text-gray-400"
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12" style={{ fontFamily: "'Roboto Mono', monospace" }}>
+    <div className="max-w-7xl mx-auto px-6 py-12" >
 
       {/* Header */}
       <div className="flex items-center justify-between mb-2">

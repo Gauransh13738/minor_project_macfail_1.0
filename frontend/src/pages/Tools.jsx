@@ -1,364 +1,146 @@
-// import { useState } from "react"
-// import PredictionModule from "./PredictionModule"
-// import AnalyticsModule from "./AnalyticsModule"
-
-// function Tools() {
-
-//   const [activeTab, setActiveTab] = useState("prediction")
-//   const [history, setHistory] = useState([])
-
-//   return (
-//     <div className="max-w-7xl mx-auto px-6 py-16">
-      
-//       <h1 className="text-3xl font-bold mb-10">
-//         Tools Dashboard
-//       </h1>
-
-//       {/* Summary Cards */}
-//       <div className="grid md:grid-cols-3 gap-6 mb-10">
-
-//         {/* Total Predictions */}
-//         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-//           <p className="text-gray-400 text-sm mb-2">
-//             Total Predictions
-//           </p>
-
-//           <p className="text-3xl font-bold">
-//             {history.length}
-//           </p>
-//         </div>
-
-
-//         {/* Failure Rate */}
-//         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-//           <p className="text-gray-400 text-sm mb-2">
-//             Failure Rate
-//           </p>
-
-//           <p className="text-3xl font-bold text-red-400">
-//             {history.length === 0
-//               ? "0%"
-//               : Math.round(
-//                   (history.filter(h => h.failure_class !== 0).length /
-//                     history.length) * 100
-//                 ) + "%"}
-//           </p>
-//         </div>
-
-
-//         {/* Last Prediction */}
-//         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-//           <p className="text-gray-400 text-sm mb-2">
-//             Last Prediction
-//           </p>
-
-//           <p className="text-lg font-semibold text-yellow-400">
-//             {history.length === 0
-//               ? "No predictions yet"
-//               : history[0].failure_type}
-//           </p>
-//        </div>
-
-//       </div>
-
-//       {/* Tabs */}
-//       <div className="flex space-x-6 border-b border-gray-800 mb-10">
-
-//         <button
-//           onClick={() => setActiveTab("prediction")}
-//           className={`pb-3 transition ${
-//             activeTab === "prediction"
-//               ? "border-b-2 border-white text-white"
-//               : "text-gray-400 hover:text-white"
-//           }`}
-//         >
-//           Prediction
-//         </button>
-
-//         <button
-//           onClick={() => setActiveTab("analysis")}
-//           className={`pb-3 transition ${
-//             activeTab === "analysis"
-//               ? "border-b-2 border-white text-white"
-//               : "text-gray-400 hover:text-white"
-//           }`}
-//         >
-//           Analysis
-//         </button>
-
-//         <button
-//           onClick={() => setActiveTab("history")}
-//           className={`pb-3 transition ${
-//             activeTab === "history"
-//               ? "border-b-2 border-white text-white"
-//               : "text-gray-400 hover:text-white"
-//           }`}
-//         >
-//           History
-//         </button>
-
-//       </div>
-
-//       {/* Dynamic Content Area */}
-//       <div className="bg-gray-900 border border-gray-800 rounded-xl p-8">
-
-//         {activeTab === "prediction" && (
-//           <PredictionModule setHistory={setHistory} />
-//         )}
-        
-//         {activeTab === "analysis" && (
-//           <AnalyticsModule history={history} />
-//         )}
-
-//         {activeTab === "history" && (
-//           <div>
-//             <h2 className="text-xl font-semibold mb-6">
-//               Prediction History
-//             </h2>
-
-//             {history.length === 0 ? (
-//               <p className="text-gray-400">No predictions yet.</p>
-//             ) : (
-//               <div className="overflow-x-auto">
-//                 <table className="w-full text-sm text-left border border-gray-800">
-//                   <thead className="bg-gray-800 text-gray-300">
-//                     <tr>
-//                       <th className="px-4 py-2">Time</th>
-//                       <th className="px-4 py-2">Type</th>
-//                       <th className="px-4 py-2">Air Temp</th>
-//                       <th className="px-4 py-2">Process Temp</th>
-//                       <th className="px-4 py-2">Speed</th>
-//                       <th className="px-4 py-2">Torque</th>
-//                       <th className="px-4 py-2">Tool Wear</th>
-//                       <th className="px-4 py-2">Failure Type</th>
-//                     </tr>
-//                   </thead>
-
-//                   <tbody>
-//                     {history.map((item, index) => (
-//                       <tr key={index} className="border-t border-gray-800">
-//                         <td className="px-4 py-2">{item.timestamp}</td>
-//                         <td className="px-4 py-2">{item.Type}</td>
-//                         <td className="px-4 py-2">{item.Air_temperature_K}</td>
-//                         <td className="px-4 py-2">{item.Process_temperature_K}</td>
-//                         <td className="px-4 py-2">{item.Rotational_speed_rpm}</td>
-//                         <td className="px-4 py-2">{item.Torque_Nm}</td>
-//                         <td className="px-4 py-2">{item.Tool_wear_min}</td>
-//                         <td className="px-4 py-2">{item.failure_type}</td>
-//                       </tr>
-//                     ))}
-//                   </tbody>
-//                 </table>
-//               </div>
-//             )}
-//           </div>
-//         )}
-
-//       </div>
-
-//     </div>
-//   )
-// }
-
-// export default Tools
-
 import { useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import PredictionModule from "./PredictionModule"
 import AnalyticsModule from "./AnalyticsModule"
+import Performance from "./Performance"
+import { toneOf } from "../components/diagnosis/constants"
+import { ruleName, sentence } from "../components/diagnosis/format"
 
-const FAILURE_COLORS = {
-  "No Failure":               "text-emerald-400",
-  "Tool Wear Failure":        "text-yellow-400",
-  "Heat Dissipation Failure": "text-blue-400",
-  "Power Failure":            "text-red-400",
-  "Overstrain Failure":       "text-orange-400",
-  "Random Failure":           "text-purple-400",
+const TABS = [
+  { id: "prediction", label: "Diagnose" },
+  { id: "performance", label: "Performance" },
+  { id: "analysis",   label: "Analysis" },
+  { id: "history",    label: "History"  },
+]
+
+function sourceOf(item) {
+  if (item.decision_source === "ontology_rule") return `Decided by ${ruleName(item.rules_fired?.[0]?.id)}`
+  if (item.decision_source === "ontology_veto") return "Ontology rejected the model's pick"
+  if (item.decision_source === "ml")            return "Model only"
+  return item.ontology_assisted ? "Ontology assisted" : "Model only"
 }
 
-const SEVERITY_COLORS = {
-  "No Failure":               { bg: "bg-emerald-900/20", border: "border-emerald-800/40", badge: "bg-emerald-900/40 text-emerald-400 border-emerald-700/40" },
-  "Tool Wear Failure":        { bg: "bg-yellow-900/10",  border: "border-yellow-800/40",  badge: "bg-yellow-900/40 text-yellow-400 border-yellow-700/40"   },
-  "Heat Dissipation Failure": { bg: "bg-blue-900/10",    border: "border-blue-800/40",    badge: "bg-blue-900/40 text-blue-400 border-blue-700/40"         },
-  "Power Failure":            { bg: "bg-red-900/20",     border: "border-red-800/40",     badge: "bg-red-900/40 text-red-400 border-red-700/40"            },
-  "Overstrain Failure":       { bg: "bg-orange-900/10",  border: "border-orange-800/40",  badge: "bg-orange-900/40 text-orange-400 border-orange-700/40"   },
-  "Random Failure":           { bg: "bg-purple-900/10",  border: "border-purple-800/40",  badge: "bg-purple-900/40 text-purple-400 border-purple-700/40"   },
-}
+function History({ history, onClear }) {
+  if (history.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-gray-700 p-10 text-center">
+        <p className="font-semibold text-gray-100">No diagnoses yet</p>
+        <p className="mt-1 text-gray-400">Run one on the Diagnose tab and it will be listed here.</p>
+      </div>
+    )
+  }
 
-const SEVERITY_LABEL = {
-  "No Failure":               "SAFE",
-  "Tool Wear Failure":        "WARNING",
-  "Heat Dissipation Failure": "WARNING",
-  "Power Failure":            "CRITICAL",
-  "Overstrain Failure":       "CRITICAL",
-  "Random Failure":           "WARNING",
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-lg font-semibold text-gray-50">Diagnoses this session</h2>
+        <button
+          type="button"
+          onClick={onClear}
+          className="rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-500 hover:text-gray-50"
+        >
+          Clear history
+        </button>
+      </div>
+
+      <ul className="mt-4 divide-y divide-gray-800 rounded-lg border border-gray-800 bg-gray-900 px-5">
+        {history.map((item, index) => {
+          const tone = toneOf(item.failure_type)
+          return (
+            <li key={index} className="py-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <span className="flex items-center gap-2 font-semibold text-gray-50">
+                    <span className={`size-2 shrink-0 rounded-full ${tone.dot}`} />
+                    {sentence(item.failure_type)}
+                  </span>
+                  <span className="text-sm text-gray-400">{sourceOf(item)}</span>
+                </p>
+                <time className="text-sm text-gray-500">{item.timestamp}</time>
+              </div>
+              <p className="mt-1 text-sm text-gray-400 tabular-nums">
+                Type {item.Type}, air {item.Air_temperature_K} K, process {item.Process_temperature_K} K,{" "}
+                {item.Rotational_speed_rpm} rpm, {item.Torque_Nm} Nm, wear {item.Tool_wear_min} min
+              </p>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
 }
 
 function Tools() {
-  const [activeTab, setActiveTab] = useState("prediction")
+  const [params] = useSearchParams()
+  const wanted = params.get("tab")
+  const [activeTab, setActiveTab] = useState(TABS.some((t) => t.id === wanted) ? wanted : "prediction")
   const [history, setHistory]     = useState([])
 
-  const failureCount  = history.filter(h => h.failure_class !== 0).length
-  const failureRate   = history.length === 0 ? 0 : Math.round((failureCount / history.length) * 100)
-  const criticalCount = history.filter(h => ["Power Failure", "Overstrain Failure"].includes(h.failure_type)).length
+  const faults   = history.filter((h) => h.failure_class !== 0).length
+  const critical = history.filter((h) => ["Power Failure", "Overstrain Failure"].includes(h.failure_type)).length
+
+  const sessionSummary =
+    history.length === 0
+      ? "No diagnoses yet this session"
+      : `${history.length} ${history.length === 1 ? "diagnosis" : "diagnoses"} this session, ${faults} with a fault, ${critical} critical`
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-16" style={{ fontFamily: "'Roboto Mono', monospace" }}>
+    <div className="mx-auto max-w-7xl px-6 py-10 lg:py-14">
+      <h1 className="display text-3xl text-gray-50 sm:text-4xl">Machine diagnosis</h1>
+      <p className="mt-3 max-w-[60ch] text-gray-300">
+        Enter a machine's sensor readings. The ML model and the ontology rules each give a view, and the page
+        shows how they were combined.
+      </p>
 
-      <h1 className="text-2xl font-bold mb-2 tracking-tight">Tools Dashboard</h1>
-      <p className="text-xs text-gray-500 uppercase tracking-widest mb-10">// Predictive Maintenance · Neuro-Symbolic Engine</p>
-
-      {/* Summary Cards */}
-      <div className="grid md:grid-cols-4 gap-4 mb-10">
-        <div className="bg-gray-900 border border-gray-800 rounded-sm p-5">
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Total Predictions</p>
-          <p className="text-3xl font-black">{history.length}</p>
-        </div>
-
-        <div className="bg-gray-900 border border-gray-800 rounded-sm p-5">
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Failure Rate</p>
-          <p className={`text-3xl font-black ${failureRate > 50 ? "text-red-400" : failureRate > 20 ? "text-yellow-400" : "text-emerald-400"}`}>
-            {failureRate}%
-          </p>
-        </div>
-
-        <div className="bg-gray-900 border border-gray-800 rounded-sm p-5">
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Critical Alerts</p>
-          <p className={`text-3xl font-black ${criticalCount > 0 ? "text-red-400" : "text-emerald-400"}`}>
-            {criticalCount}
-          </p>
-        </div>
-
-        <div className="bg-gray-900 border border-gray-800 rounded-sm p-5">
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Last Prediction</p>
-          <p className={`text-sm font-bold ${FAILURE_COLORS[history[0]?.failure_type] || "text-gray-400"}`}>
-            {history.length === 0 ? "None yet" : history[0].failure_type}
-          </p>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex space-x-0 border-b border-gray-800 mb-8">
-        {["prediction", "analysis", "history"].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2.5 text-xs uppercase tracking-widest transition-colors ${
-              activeTab === tab
-                ? "border-b-2 border-orange-500 text-orange-400"
-                : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            {tab}
-            {tab === "history" && history.length > 0 && (
-              <span className="ml-2 bg-gray-800 text-gray-400 text-[9px] px-1.5 py-0.5 rounded-full">
-                {history.length}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      <div className="bg-gray-900 border border-gray-800 rounded-sm p-8">
-
-        {activeTab === "prediction" && (
-          <PredictionModule setHistory={setHistory} />
-        )}
-
-        {activeTab === "analysis" && (
-          <AnalyticsModule history={history} />
-        )}
-
-        {/* Feature 1: Upgraded History Timeline */}
-        {activeTab === "history" && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xs text-gray-500 uppercase tracking-widest">// Prediction Timeline</h2>
-                <div className="h-px w-16 bg-gray-800" />
-              </div>
-              {history.length > 0 && (
-                <button
-                  onClick={() => setHistory([])}
-                  className="text-[9px] text-gray-600 hover:text-red-400 uppercase tracking-widest border border-gray-800 hover:border-red-900 px-3 py-1 transition-colors rounded-sm"
-                >
-                  Clear History
-                </button>
+      <div className="mt-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-gray-800">
+        <div role="tablist" aria-label="Tools" className="-mx-2 flex max-w-full gap-0 overflow-x-auto sm:mx-0 sm:gap-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              role="tab"
+              id={`tab-${tab.id}`}
+              aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              onClick={() => setActiveTab(tab.id)}
+              className={`-mb-px border-b-2 shrink-0 px-3 py-3 text-sm font-medium transition-colors sm:px-4 ${
+                activeTab === tab.id
+                  ? "border-gray-50 text-gray-50"
+                  : "border-transparent text-gray-400 hover:text-gray-100"
+              }`}
+            >
+              {tab.label}
+              {tab.id === "history" && history.length > 0 && (
+                <span className="ml-2 rounded-full bg-gray-800 px-2 py-0.5 text-xs tabular-nums text-gray-300">{history.length}</span>
               )}
-            </div>
+            </button>
+          ))}
+        </div>
+        <p className="pb-3 text-sm text-gray-500">{sessionSummary}</p>
+      </div>
 
-            {history.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="text-4xl mb-4 opacity-10 font-black select-none">📋</div>
-                <p className="text-gray-600 text-xs uppercase tracking-widest">No predictions yet</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {history.map((item, index) => {
-                  const colors  = SEVERITY_COLORS[item.failure_type] || SEVERITY_COLORS["No Failure"]
-                  const sevLabel = SEVERITY_LABEL[item.failure_type]  || "UNKNOWN"
-                  const textCol = FAILURE_COLORS[item.failure_type]   || "text-gray-400"
-                  const isFirst = index === 0
+      <div className="pt-8">
+        {/* The diagnosis page stays mounted so switching tabs doesn't lose the readings or the result. */}
+        <div role="tabpanel" id="panel-prediction" aria-labelledby="tab-prediction" hidden={activeTab !== "prediction"}>
+          <PredictionModule setHistory={setHistory} />
+        </div>
 
-                  return (
-                    <div
-                      key={index}
-                      className={`relative border rounded-sm p-4 transition-colors ${colors.bg} ${colors.border} ${isFirst ? "ring-1 ring-orange-500/20" : ""}`}
-                    >
-                      {isFirst && (
-                        <div className="absolute top-3 right-3">
-                          <span className="text-[8px] bg-orange-900/40 border border-orange-700/40 text-orange-400 px-2 py-0.5 rounded-sm uppercase tracking-widest">
-                            Latest
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div className="flex items-center gap-3">
-                          {/* Severity badge */}
-                          <span className={`text-[9px] border px-2 py-0.5 rounded-sm uppercase tracking-widest font-black ${colors.badge}`}>
-                            {sevLabel}
-                          </span>
-                          {/* Failure type */}
-                          <span className={`text-sm font-bold uppercase ${textCol}`}>
-                            {item.failure_type}
-                          </span>
-                        </div>
-                        <span className="text-[9px] text-gray-600 flex-shrink-0">{item.timestamp}</span>
-                      </div>
-
-                      {/* Sensor readings row */}
-                      <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                        {[
-                          { label: "Type",         value: item.Type },
-                          { label: "Air [K]",      value: item.Air_temperature_K },
-                          { label: "Process [K]",  value: item.Process_temperature_K },
-                          { label: "RPM",          value: item.Rotational_speed_rpm },
-                          { label: "Torque [Nm]",  value: item.Torque_Nm },
-                          { label: "Wear [min]",   value: item.Tool_wear_min },
-                        ].map(({ label, value }) => (
-                          <div key={label} className="bg-black/30 border border-gray-800/50 px-2 py-1.5 rounded-sm">
-                            <div className="text-[8px] text-gray-600 uppercase tracking-wider mb-0.5">{label}</div>
-                            <div className="text-xs font-mono text-gray-300">{value}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Ontology assisted indicator */}
-                      {item.ontology_assisted && (
-                        <div className="mt-2 flex items-center gap-1.5">
-                          <div className="w-1 h-1 rounded-full bg-emerald-400" />
-                          <span className="text-[8px] text-emerald-500 uppercase tracking-wider">Ontology assisted</span>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+        {activeTab === "performance" && (
+          <div role="tabpanel" id="panel-performance" aria-labelledby="tab-performance">
+            <Performance />
           </div>
         )}
 
+        {activeTab === "analysis" && (
+          <div role="tabpanel" id="panel-analysis" aria-labelledby="tab-analysis">
+            <AnalyticsModule history={history} />
+          </div>
+        )}
+
+        {activeTab === "history" && (
+          <div role="tabpanel" id="panel-history" aria-labelledby="tab-history">
+            <History history={history} onClear={() => setHistory([])} />
+          </div>
+        )}
       </div>
     </div>
   )
