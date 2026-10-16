@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
+import { API } from "../components/diagnosis/constants"
 
-const API = "http://127.0.0.1:8000"
 
 // Safe operating ranges for each sensor (from AI4I 2020 dataset analysis)
 const SENSOR_CONFIG = {

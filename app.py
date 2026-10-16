@@ -31,9 +31,13 @@ app = FastAPI(
     version="2.0"
 )
 
+# Comma-separated list of allowed frontend origins, e.g. "https://industra.vercel.app".
+# Local development origins are always allowed.
+_extra = [o.strip().rstrip("/") for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", *_extra],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

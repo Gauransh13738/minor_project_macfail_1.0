@@ -1,6 +1,9 @@
 fastapi
 uvicorn
 pandas
-scikit-learn
+# model.pkl was trained with scikit-learn 1.8.0 and contains an imbalanced-learn pipeline,
+# so both must be installed, and the scikit-learn version must match.
+scikit-learn==1.8.0
+imbalanced-learn>=0.14,<0.15
 joblib
 rdflib>=6.0.0
